@@ -28,7 +28,7 @@ INCLUDEDIR?=$(PREFIX)/include
 BINDIR?=$(PREFIX)/bin
 LIBDIR?=$(PREFIX)/lib
 JANET_BUILD?="\"$(shell git log --pretty=format:'%h' -n 1 || echo local)\""
-CLIBS=-lm -lpthread
+CLIBS=-lm -lpthread -lcurl -liup -liupimglib
 JANET_TARGET=build/janet
 JANET_LIBRARY=build/libjanet.so
 JANET_STATIC_LIBRARY=build/libjanet.a
@@ -37,7 +37,7 @@ MANPATH?=$(PREFIX)/share/man/man1/
 PKG_CONFIG_PATH?=$(LIBDIR)/pkgconfig
 DEBUGGER=gdb
 
-CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden
+CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden -I/usr/include/iup -I/home/mcarter/src/janet-code/target/super/circlet
 LDFLAGS:=$(LDFLAGS) -rdynamic
 
 # For installation
@@ -107,6 +107,7 @@ JANET_CORE_SOURCES=src/core/abstract.c \
 				   src/core/symcache.c \
 				   src/core/table.c \
 				   src/core/thread.c \
+				   src/core/custom.c \
 				   src/core/tuple.c \
 				   src/core/typedarray.c \
 				   src/core/util.c \

@@ -999,6 +999,7 @@ static void janet_load_libs(JanetTable *env) {
 #ifdef JANET_THREADS
     janet_lib_thread(env);
 #endif
+    janet_lib_custom(env);
 }
 
 #ifdef JANET_BOOTSTRAP

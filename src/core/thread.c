@@ -553,6 +553,31 @@ static Janet cfun_thread_current(int32_t argc, Janet *argv) {
     return janet_wrap_abstract(janet_vm_thread_current);
 }
 
+static Janet cfun_thread_newx(int32_t argc, Janet *argv) {
+    janet_arity(argc, 1, 2);
+    /* Just type checking */
+    janet_getfunction(argv, 0);
+    int32_t cap = janet_optinteger(argv, argc, 1, 10);
+    if (cap < 1 || cap > UINT16_MAX) {
+        janet_panicf("bad slot #1, expected integer in range [1, 65535], got %d", cap);
+    }
+    JanetTable *encode = janet_get_core_table("make-image-dict");
+
+    JanetMailboxPair *pair = make_mailbox_pair(janet_vm_mailbox);
+    JanetThread *thread = janet_make_thread(pair->newbox, encode);
+    if (janet_thread_start_child(pair)) {
+        destroy_mailbox_pair(pair);
+        janet_panic("could not start thread");
+    }
+
+    /* If thread started, send the worker function. */
+    if (janet_thread_send(thread, argv[0], INFINITY)) {
+        janet_panicf("could not send worker function %v to thread", argv[0]);
+    }
+
+    return janet_wrap_abstract(thread);
+}
+
 static Janet cfun_thread_new(int32_t argc, Janet *argv) {
     janet_arity(argc, 1, 2);
     /* Just type checking */
@@ -631,6 +656,14 @@ static const JanetReg threadlib_cfuns[] = {
         "thread/current", cfun_thread_current,
         JDOC("(thread/current)\n\n"
              "Get the current running thread.")
+    },
+    {
+        "thread/newx", cfun_thread_newx,
+        JDOC("(thread/new func &opt capacity)\n\n"
+             "Start a new thread that will start immediately. "
+             "If capacity is provided, that is how many messages can be stored in the thread's mailbox before blocking senders. "
+             "The capacity must be between 1 and 65535 inclusive, and defaults to 10. "
+             "Returns a handle to the new thread.")
     },
     {
         "thread/new", cfun_thread_new,
