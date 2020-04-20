@@ -28,7 +28,7 @@ INCLUDEDIR?=$(PREFIX)/include
 BINDIR?=$(PREFIX)/bin
 LIBDIR?=$(PREFIX)/lib
 JANET_BUILD?="\"$(shell git log --pretty=format:'%h' -n 1 || echo local)\""
-CLIBS=-lm -lpthread -lcurl -liup -liupimglib
+CLIBS=-lm -lsqlite3 -lpthread -lcurl -liup -liupimglib /home/mcarter/src/janet-code/target/super/sqlite3/sqlite3.c
 JANET_TARGET=build/janet
 JANET_LIBRARY=build/libjanet.so
 JANET_STATIC_LIBRARY=build/libjanet.a
@@ -37,7 +37,9 @@ MANPATH?=$(PREFIX)/share/man/man1/
 PKG_CONFIG_PATH?=$(LIBDIR)/pkgconfig
 DEBUGGER=gdb
 
-CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden -I/usr/include/iup -I/home/mcarter/src/janet-code/target/super/circlet
+CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden -I/usr/include/iup \
+	-I/home/mcarter/src/janet-code/target/super/circlet \
+	-I/home/mcarter/src/janet-code/target/super/sqlite3
 LDFLAGS:=$(LDFLAGS) -rdynamic
 
 # For installation

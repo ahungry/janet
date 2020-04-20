@@ -32,9 +32,14 @@
 #include "/home/mcarter/src/janet-code/target/super/iup_wrap.c"
 #include "/home/mcarter/src/janet-code/target/super/circlet/mongoose.c"
 #include "/home/mcarter/src/janet-code/target/super/circlet/circlet.c"
+// #include "/home/mcarter/src/janet-code/target/super/sqlite3/sqlite3.c"
+#include "/home/mcarter/src/janet-code/target/super/sqlite3/main.c"
+#include "/home/mcarter/src/janet-code/target/super/json/json.c"
 
 /* Module entry point */
 void janet_lib_custom(JanetTable *env) {
+    janet_core_cfuns(env, NULL, sqlite3_cfuns);
+    janet_core_cfuns(env, NULL, json_cfuns);
     janet_core_cfuns(env, NULL, circlet_cfuns);
     janet_core_cfuns(env, NULL, curl_cfuns);
     janet_core_cfuns(env, NULL, cfuns);
