@@ -39,6 +39,7 @@ DEBUGGER=gdb
 
 CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden -I/usr/include/iup \
 	-I../../ \
+	-I../../build/linux/iup/include \
 	-I../../circlet \
 	-I../../sqlite3
 LDFLAGS:=$(LDFLAGS) -rdynamic
