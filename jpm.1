@@ -25,12 +25,22 @@ More interesting are the local commands. For more information on jpm usage, see 
 .SH FLAGS
 
 .TP
+.BR \-\-nocolor
+Disable color in the jpm repl.
+
+.TP
 .BR \-\-verbose
 Print detailed messages of what jpm is doing, including compilation commands and other shell commands.
 
 .TP
 .BR \-\-test
 If passed to jpm install, runs tests before installing. Will run tests recursively on dependencies.
+
+.TP
+.BR \-\-offline
+Prevents jpm from going to network to get dependencies - all dependencies should be in the cache or this command will fail.
+Use this flag with the deps and update-pkgs subcommands. This is not a surefire way to prevent a build script from accessing
+the network, for example, a build script that invokes curl will still have network access.
 
 .SH OPTIONS
 
@@ -140,6 +150,12 @@ like make. run will run a single rule or build a single file.
 List all rules that can be run via run. This is useful for exploring rules in the project.
 
 .TP
+.BR rule-tree\ [\fBroot\fR] [\fdepth\fR]
+Show rule dependency tree in a pretty format. Optionally provide a rule to use as the tree
+root, as well as a max depth to print. By default, prints the full tree for all rules. This
+can be quite long, so it is recommended to give a root rule.
+
+.TP
 .BR show-paths
 Show all of the paths used when installing and building artifacts.
 
@@ -153,6 +169,11 @@ Create a standalone, statically linked executable from a Janet source file that 
 The main function is the entry point of the program and will receive command line arguments
 as function arguments. The entry file can import other modules, including native C modules, and
 jpm will attempt to include the dependencies into the generated executable.
+
+.TP
+.BR repl
+Load the current project.janet file and start a repl in it's environment. This lets a user better
+debug the project file, as well as run rules manually.
 
 .SH ENVIRONMENT
 

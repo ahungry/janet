@@ -329,7 +329,7 @@ int janet_thread_send(JanetThread *thread, Janet msg, double timeout) {
         msgbuf->count = 0;
 
         /* Start panic zone */
-        janet_marshal(msgbuf, msg, thread->encode, 0);
+        janet_marshal(msgbuf, msg, thread->encode, JANET_MARSHAL_UNSAFE);
         /* End panic zone */
 
         mailbox->messageNext = (mailbox->messageNext + 1) % mailbox->messageCapacity;
@@ -379,7 +379,7 @@ int janet_thread_receive(Janet *msg_out, double timeout) {
                 const uint8_t *nextItem = NULL;
                 Janet item = janet_unmarshal(
                                  msgbuf->data, msgbuf->count,
-                                 0, janet_thread_get_decode(), &nextItem);
+                                 JANET_MARSHAL_UNSAFE, janet_thread_get_decode(), &nextItem);
                 *msg_out = item;
 
                 /* Cleanup */
@@ -409,7 +409,7 @@ int janet_thread_receive(Janet *msg_out, double timeout) {
 
 static int janet_thread_getter(void *p, Janet key, Janet *out);
 
-static JanetAbstractType Thread_AT = {
+const JanetAbstractType janet_thread_type = {
     "core/thread",
     thread_gc,
     thread_mark,
@@ -418,7 +418,7 @@ static JanetAbstractType Thread_AT = {
 };
 
 static JanetThread *janet_make_thread(JanetMailbox *mailbox, JanetTable *encode) {
-    JanetThread *thread = janet_abstract(&Thread_AT, sizeof(JanetThread));
+    JanetThread *thread = janet_abstract(&janet_thread_type, sizeof(JanetThread));
     janet_mailbox_ref(mailbox, 1);
     thread->mailbox = mailbox;
     thread->encode = encode;
@@ -426,7 +426,7 @@ static JanetThread *janet_make_thread(JanetMailbox *mailbox, JanetTable *encode)
 }
 
 JanetThread *janet_getthread(const Janet *argv, int32_t n) {
-    return (JanetThread *) janet_getabstract(argv, n, &Thread_AT);
+    return (JanetThread *) janet_getabstract(argv, n, &janet_thread_type);
 }
 
 /* Runs in new thread */
@@ -697,7 +697,7 @@ static const JanetReg threadlib_cfuns[] = {
 /* Module entry point */
 void janet_lib_thread(JanetTable *env) {
     janet_core_cfuns(env, NULL, threadlib_cfuns);
-    janet_register_abstract_type(&Thread_AT);
+    janet_register_abstract_type(&janet_thread_type);
 }
 
 #endif
