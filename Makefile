@@ -38,6 +38,7 @@ PKG_CONFIG_PATH?=$(LIBDIR)/pkgconfig
 DEBUGGER=gdb
 
 CFLAGS:=$(CFLAGS) -std=c99 -Wall -Wextra -Isrc/include -Isrc/conf -fPIC -O2 -fvisibility=hidden -I/usr/include/iup \
+	-I../../ \
 	-I../../circlet \
 	-I../../sqlite3
 LDFLAGS:=$(LDFLAGS) -rdynamic

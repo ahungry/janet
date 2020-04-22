@@ -28,12 +28,18 @@
 #include "state.h"
 #endif
 
-#include "../../../../curl_wrap_app.c"
-#include "../../../../iup_wrap.c"
-#include "../../../../circlet/mongoose.c"
-#include "../../../../circlet/circlet.c"
-#include "../../../../sqlite3/main.c"
-#include "../../../../json/json.c"
+#include <curl_wrap_app.c>
+#include <iup_wrap.c>
+#include <circlet/mongoose.c>
+#include <circlet/circlet.c>
+#include <sqlite3/main.c>
+#include <json/json.c>
+/* #include "../../../../curl_wrap_app.c" */
+/* #include "../../../../iup_wrap.c" */
+/* #include "../../../../circlet/mongoose.c" */
+/* #include "../../../../circlet/circlet.c" */
+/* #include "../../../../sqlite3/main.c" */
+/* #include "../../../../json/json.c" */
 
 /* Module entry point */
 void janet_lib_custom(JanetTable *env) {
