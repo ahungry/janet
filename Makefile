@@ -30,7 +30,9 @@ LIBDIR?=$(PREFIX)/lib
 JANET_BUILD?="\"$(shell git log --pretty=format:'%h' -n 1 || echo local)\""
 CLIBS=-lm -lsqlite3 -lpthread -lcurl -lz -lpng16 -lstdc++ \
 	-L../../build/linux/iup -l:libiup.a -l:libiupimglib.a -l:libiupim.a \
-	-L../../build/linux/im -l:libim.a
+	-L../../build/linux/im -l:libim.a \
+	`pkg-config --libs gtk+-3.0` -lX11
+
 JANET_TARGET=build/janet
 JANET_LIBRARY=build/libjanet.so
 JANET_STATIC_LIBRARY=build/libjanet.a
