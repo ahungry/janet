@@ -29,8 +29,8 @@ BINDIR?=$(PREFIX)/bin
 LIBDIR?=$(PREFIX)/lib
 JANET_BUILD?="\"$(shell git log --pretty=format:'%h' -n 1 || echo local)\""
 CLIBS=-lm -lsqlite3 -lpthread -lcurl \
-	-L../../build/linux/iup -liup -liupimglib \
-	-L../../build/linux/im -liupim -lim
+	-L../../build/linux/iup -l:libiup.a -l:libiupimglib.a -l:libiupim.a \
+	-L../../build/linux/im -l:libim.a
 JANET_TARGET=build/janet
 JANET_LIBRARY=build/libjanet.so
 JANET_STATIC_LIBRARY=build/libjanet.a
@@ -147,7 +147,7 @@ build/janet_boot: $(JANET_BOOT_OBJECTS)
 
 # Now the reason we bootstrap in the first place
 build/janet.c: build/janet_boot src/boot/boot.janet
-	LD_PRELOAD='../../build/linux/iup/libiup.so' build/janet_boot . JANET_PATH '$(JANET_PATH)' JANET_HEADERPATH '$(INCLUDEDIR)/janet' > $@
+	build/janet_boot . JANET_PATH '$(JANET_PATH)' JANET_HEADERPATH '$(INCLUDEDIR)/janet' > $@
 
 ########################
 ##### Amalgamation #####
