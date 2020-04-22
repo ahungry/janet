@@ -28,9 +28,10 @@ INCLUDEDIR?=$(PREFIX)/include
 BINDIR?=$(PREFIX)/bin
 LIBDIR?=$(PREFIX)/lib
 JANET_BUILD?="\"$(shell git log --pretty=format:'%h' -n 1 || echo local)\""
-CLIBS=-lm -lsqlite3 -lpthread -lcurl -lz -lpng16 -lstdc++ \
+CLIBS=-lm -lsqlite3 -lpthread -lcurl \
 	-L../../build/linux/iup -l:libiup.a -l:libiupimglib.a -l:libiupim.a \
 	-L../../build/linux/im -l:libim.a \
+	-lz -lpng16 -lstdc++ \
 	`pkg-config --libs gtk+-3.0` -lX11
 
 JANET_TARGET=build/janet
