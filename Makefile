@@ -147,7 +147,7 @@ build/janet_boot: $(JANET_BOOT_OBJECTS)
 
 # Now the reason we bootstrap in the first place
 build/janet.c: build/janet_boot src/boot/boot.janet
-	build/janet_boot . JANET_PATH '$(JANET_PATH)' JANET_HEADERPATH '$(INCLUDEDIR)/janet' > $@
+	LD_PRELOAD=../../build/linux/iup build/janet_boot . JANET_PATH '$(JANET_PATH)' JANET_HEADERPATH '$(INCLUDEDIR)/janet' > $@
 
 ########################
 ##### Amalgamation #####
