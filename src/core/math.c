@@ -413,7 +413,7 @@ static const JanetReg math_cfuns[] = {
         "math/rng", cfun_rng_make,
         JDOC("(math/rng &opt seed)\n\n"
              "Creates a Psuedo-Random number generator, with an optional seed. "
-             "The seed should be an unsigned 32 bit integer. "
+             "The seed should be an unsigned 32 bit integer or a buffer. "
              "Do not use this for cryptography. Returns a core/rng abstract type.")
     },
     {
@@ -480,7 +480,7 @@ static const JanetReg math_cfuns[] = {
     },
     {
         "math/next", janet_nextafter,
-        JDOC("(math/next y)\n\n"
+        JDOC("(math/next x y)\n\n"
              "Returns the next representable floating point value after x in the direction of y.")
     },
     {NULL, NULL, NULL}

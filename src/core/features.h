@@ -26,7 +26,11 @@
 #define JANET_FEATURES_H_defined
 
 #ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200112L
+#define _POSIX_C_SOURCE 200809L
+#endif
+
+#if defined(WIN32) || defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
 #endif
 
 /* Needed for realpath on linux */

@@ -32,10 +32,10 @@
 #include <errno.h>
 
 /* Handle runtime errors */
-#ifndef janet_exit
+#ifndef JANET_EXIT
 #include <stdio.h>
-#define janet_exit(m) do { \
-    printf("C runtime error at line %d in file %s: %s\n",\
+#define JANET_EXIT(m) do { \
+    fprintf(stderr, "C runtime error at line %d in file %s: %s\n",\
         __LINE__,\
         __FILE__,\
         (m));\
@@ -44,13 +44,13 @@
 #endif
 
 #define janet_assert(c, m) do { \
-    if (!(c)) janet_exit((m)); \
+    if (!(c)) JANET_EXIT((m)); \
 } while (0)
 
 /* What to do when out of memory */
 #ifndef JANET_OUT_OF_MEMORY
 #include <stdio.h>
-#define JANET_OUT_OF_MEMORY do { printf("janet out of memory\n"); exit(1); } while (0)
+#define JANET_OUT_OF_MEMORY do { fprintf(stderr, "janet out of memory\n"); exit(1); } while (0)
 #endif
 
 /* Omit docstrings in some builds */
@@ -125,6 +125,11 @@ void janet_lib_inttypes(JanetTable *env);
 #endif
 #ifdef JANET_THREADS
 void janet_lib_thread(JanetTable *env);
+#endif
+#ifdef JANET_NET
+void janet_lib_net(JanetTable *env);
+void janet_net_deinit(void);
+void janet_net_markloop(void);
 #endif
 void janet_lib_custom(JanetTable *env);
 

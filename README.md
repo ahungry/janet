@@ -4,6 +4,8 @@
 [![Build Status](https://travis-ci.org/janet-lang/janet.svg?branch=master)](https://travis-ci.org/janet-lang/janet)
 [![builds.sr.ht status](https://builds.sr.ht/~bakpakin/janet/freebsd.yml.svg)](https://builds.sr.ht/~bakpakin/janet/freebsd.yml?)
 [![builds.sr.ht status](https://builds.sr.ht/~bakpakin/janet/openbsd.yml.svg)](https://builds.sr.ht/~bakpakin/janet/openbsd.yml?)
+[![builds.sr.ht status](https://builds.sr.ht/~bakpakin/janet/meson.yml.svg)](https://builds.sr.ht/~bakpakin/janet/meson.yml?)
+[![builds.sr.ht status](https://builds.sr.ht/~bakpakin/janet/meson_min.yml.svg)](https://builds.sr.ht/~bakpakin/janet/meson_min.yml?)
 
 <img src="https://raw.githubusercontent.com/janet-lang/janet/master/assets/janet-w200.png" alt="Janet logo" width=200 align="left">
 
@@ -85,6 +87,8 @@ make
 make test
 make repl
 ```
+
+Find out more about the available make targets by running `make help`.
 
 ### 32-bit Haiku
 
@@ -200,7 +204,7 @@ If installed, you can also run `man janet` and `man jpm` to get usage informatio
 Janet can be embedded in a host program very easily. The normal build
 will create a file `build/janet.c`, which is a single C file
 that contains all the source to Janet. This file, along with
-`src/include/janet.h` and `src/include/janetconf.h` can dragged into any C
+`src/include/janet.h` and `src/conf/janetconf.h` can be dragged into any C
 project and compiled into the project. Janet should be compiled with `-std=c99`
 on most compilers, and will need to be linked to the math library, `-lm`, and
 the dynamic linker, `-ldl`, if one wants to be able to load dynamic modules. If

@@ -2,6 +2,26 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased - ???
+- Add `:fresh` option to `(import ...)` to overwrite the module cache.
+- `(range x y 0)` will return an empty array instead of hanging forever.
+- Rename `jpm repl` to `jpm debug-repl`.
+
+## 1.9.1 - 2020-05-12
+- Add :prefix option to declare-source
+- Re-enable minimal builds with the debugger.
+- Add several flags for configuring Janet on different platforms.
+- Fix broken meson build from 1.9.0 and add meson to CI.
+- Fix compilation issue when nanboxing is disabled.
+
+## 1.9.0 - 2020-05-10
+- Add `:ldflags` option to many jpm declare functions.
+- Add `errorf` to core.
+- Add `lenprefix` combinator to PEGs.
+- Add `%M`, `%m`, `%N`, and `%n` formatters to formatting functions. These are the
+  same as `%Q`, `%q`, `%P`, and `%p`, but will not truncate long values.
+- Add `fiber/root`.
+- Add beta `net/` module to core for socket based networking.
+- Add the `parse` function to parse strings of source code more conveniently.
 - Add `jpm rule-tree` subcommand.
 - Add `--offline` flag to jpm to force use of the cache.
 - Allow sending pointers and C functions across threads via `thread/send`.
@@ -22,7 +42,7 @@ All notable changes to this project will be documented in this file.
 - Add os/umask
 - Add os/perm-int
 - Add os/perm-string
-- Add :octal-permissions option for os/stat.
+- Add :int-permissions option for os/stat.
 - Add `jpm repl` subcommand, as well as `post-deps` macro in project.janet files.
 - Various bug fixes.
 

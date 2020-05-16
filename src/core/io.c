@@ -30,7 +30,9 @@
 #include <errno.h>
 
 #ifndef JANET_WINDOWS
+#include <fcntl.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 static int cfun_io_gc(void *p, size_t len);
@@ -87,18 +89,17 @@ static Janet makef(FILE *f, int flags) {
     JanetFile *iof = (JanetFile *) janet_abstract(&janet_file_type, sizeof(JanetFile));
     iof->file = f;
     iof->flags = flags;
+#ifndef JANET_WINDOWS
+    /* While we would like fopen to set cloexec by default (like O_CLOEXEC) with the e flag, that is
+     * not standard. */
+    if (!(flags & JANET_FILE_NOT_CLOSEABLE))
+        fcntl(fileno(f), F_SETFD, FD_CLOEXEC);
+#endif
     return janet_wrap_abstract(iof);
 }
 
 /* Open a process */
-#ifdef __EMSCRIPTEN__
-static Janet cfun_io_popen(int32_t argc, Janet *argv) {
-    (void) argc;
-    (void) argv;
-    janet_panic("not implemented on this platform");
-    return janet_wrap_nil();
-}
-#else
+#ifndef JANET_NO_PROCESSES
 static Janet cfun_io_popen(int32_t argc, Janet *argv) {
     janet_arity(argc, 1, 2);
     const uint8_t *fname = janet_getstring(argv, 0);
@@ -129,6 +130,7 @@ static Janet cfun_io_popen(int32_t argc, Janet *argv) {
 static Janet cfun_io_temp(int32_t argc, Janet *argv) {
     (void)argv;
     janet_fixarity(argc, 0);
+    // XXX use mkostemp when we can to avoid CLOEXEC race.
     FILE *tmp = tmpfile();
     if (!tmp)
         janet_panicf("unable to create temporary file - %s", strerror(errno));
@@ -239,12 +241,24 @@ static Janet cfun_io_fflush(int32_t argc, Janet *argv) {
     return argv[0];
 }
 
+#ifdef JANET_WINDOWS
+#define pclose _pclose
+#define WEXITSTATUS(x) x
+#endif
+
 /* Cleanup a file */
 static int cfun_io_gc(void *p, size_t len) {
     (void) len;
     JanetFile *iof = (JanetFile *)p;
     if (!(iof->flags & (JANET_FILE_NOT_CLOSEABLE | JANET_FILE_CLOSED))) {
-        return fclose(iof->file);
+        /* We can't panic inside a gc, so just ignore bad statuses here */
+        if (iof->flags & JANET_FILE_PIPED) {
+#ifndef JANET_NO_PROCESSES
+            pclose(iof->file);
+#endif
+        } else {
+            fclose(iof->file);
+        }
     }
     return 0;
 }
@@ -258,14 +272,12 @@ static Janet cfun_io_fclose(int32_t argc, Janet *argv) {
     if (iof->flags & (JANET_FILE_NOT_CLOSEABLE))
         janet_panic("file not closable");
     if (iof->flags & JANET_FILE_PIPED) {
-#ifdef JANET_WINDOWS
-#define pclose _pclose
-#define WEXITSTATUS(x) x
-#endif
+#ifndef JANET_NO_PROCESSES
         int status = pclose(iof->file);
         iof->flags |= JANET_FILE_CLOSED;
         if (status == -1) janet_panic("could not close file");
         return janet_wrap_integer(WEXITSTATUS(status));
+#endif
     } else {
         if (fclose(iof->file)) janet_panic("could not close file");
         iof->flags |= JANET_FILE_CLOSED;
@@ -640,6 +652,7 @@ static const JanetReg io_cfuns[] = {
              "for the relative number of bytes to seek in the file. n may be a real "
              "number to handle large files of more the 4GB. Returns the file handle.")
     },
+#ifndef JANET_NO_PROCESSES
     {
         "file/popen", cfun_io_popen,
         JDOC("(file/popen path &opt mode)\n\n"
@@ -648,6 +661,7 @@ static const JanetReg io_cfuns[] = {
              "process can be read from the file. In :w mode, the stdin of the process "
              "can be written to. Returns the new file.")
     },
+#endif
     {NULL, NULL, NULL}
 };
 

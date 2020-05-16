@@ -105,6 +105,7 @@ JANET_CORE_SOURCES=src/core/abstract.c \
 				   src/core/io.c \
 				   src/core/marsh.c \
 				   src/core/math.c \
+				   src/core/net.c \
 				   src/core/os.c \
 				   src/core/parse.c \
 				   src/core/peg.c \
@@ -204,12 +205,12 @@ valgrind: $(JANET_TARGET)
 test: $(JANET_TARGET) $(TEST_PROGRAMS)
 	for f in test/suite*.janet; do ./$(JANET_TARGET) "$$f" || exit; done
 	for f in examples/*.janet; do ./$(JANET_TARGET) -k "$$f"; done
-	./$(JANET_TARGET) -k auxbin/jpm
+	./$(JANET_TARGET) -k jpm
 
 valtest: $(JANET_TARGET) $(TEST_PROGRAMS)
 	for f in test/suite*.janet; do $(VALGRIND_COMMAND) ./$(JANET_TARGET) "$$f" || exit; done
 	for f in examples/*.janet; do ./$(JANET_TARGET) -k "$$f"; done
-	$(VALGRIND_COMMAND) ./$(JANET_TARGET) -k auxbin/jpm
+	$(VALGRIND_COMMAND) ./$(JANET_TARGET) -k jpm
 
 callgrind: $(JANET_TARGET)
 	for f in test/suite*.janet; do valgrind --tool=callgrind ./$(JANET_TARGET) "$$f" || exit; done
@@ -223,7 +224,7 @@ dist: build/janet-dist.tar.gz
 build/janet-%.tar.gz: $(JANET_TARGET) \
 	src/include/janet.h src/conf/janetconf.h \
 	jpm.1 janet.1 LICENSE CONTRIBUTING.md $(JANET_LIBRARY) $(JANET_STATIC_LIBRARY) \
-	build/doc.html README.md build/janet.c build/shell.c auxbin/jpm
+	build/doc.html README.md build/janet.c build/shell.c jpm
 	$(eval JANET_DIST_DIR = "janet-$(shell basename $*)")
 	mkdir -p build/$(JANET_DIST_DIR)
 	cp -r $^ build/$(JANET_DIST_DIR)/
@@ -268,7 +269,7 @@ install: $(JANET_TARGET) build/janet.pc
 	cp $(JANET_STATIC_LIBRARY) '$(DESTDIR)$(LIBDIR)/libjanet.a'
 	ln -sf $(SONAME) '$(DESTDIR)$(LIBDIR)/libjanet.so'
 	ln -sf libjanet.so.$(shell $(JANET_TARGET) -e '(print janet/version)') $(DESTDIR)$(LIBDIR)/$(SONAME)
-	cp -rf auxbin/* '$(DESTDIR)$(BINDIR)'
+	cp -rf jpm '$(DESTDIR)$(BINDIR)'
 	mkdir -p '$(DESTDIR)$(MANPATH)'
 	cp janet.1 '$(DESTDIR)$(MANPATH)'
 	cp jpm.1 '$(DESTDIR)$(MANPATH)'
@@ -299,6 +300,7 @@ build/janet.tmLanguage: tools/tm_lang_gen.janet $(JANET_TARGET)
 
 clean:
 	-rm -rf build vgcore.* callgrind.*
+	-rm -rf test/install/build test/install/modpath
 
 test-install:
 	cd test/install \
@@ -308,10 +310,33 @@ test-install:
 		&& build/testexec \
 		&& jpm --verbose quickbin testexec.janet build/testexec2 \
 		&& build/testexec2 \
-		&& jpm --verbose --testdeps --modpath=. install https://github.com/janet-lang/json.git
-	cd test/install && jpm --verbose --test --modpath=. install https://github.com/janet-lang/jhydro.git
-	cd test/install && jpm --verbose --test --modpath=. install https://github.com/janet-lang/path.git
-	cd test/install && jpm --verbose --test --modpath=. install https://github.com/janet-lang/argparse.git
+		&& mkdir -p modpath \
+		&& jpm --verbose --testdeps --modpath=./modpath install https://github.com/janet-lang/json.git
+	cd test/install && jpm --verbose --test --modpath=./modpath install https://github.com/janet-lang/jhydro.git
+	cd test/install && jpm --verbose --test --modpath=./modpath install https://github.com/janet-lang/path.git
+	cd test/install && jpm --verbose --test --modpath=./modpath install https://github.com/janet-lang/argparse.git
+
+help:
+	@echo
+	@echo 'Janet: A Dynamic Language & Bytecode VM'
+	@echo
+	@echo Usage:
+	@echo '   make            Build Janet'
+	@echo '   make repl       Start a REPL from a built Janet'
+	@echo
+	@echo '   make test       Test a built Janet'
+	@echo '   make valgrind   Assess Janet with Valgrind'
+	@echo '   make callgrind  Assess Janet with Valgrind, using Callgrind'
+	@echo '   make valtest    Run the test suite with Valgrind to check for memory leaks'
+	@echo '   make dist       Create a distribution tarball'
+	@echo '   make docs       Generate documentation'
+	@echo '   make debug      Run janet with GDB or LLDB'
+	@echo '   make install    Install into the current filesystem'
+	@echo '   make uninstall  Uninstall from the current filesystem'
+	@echo '   make clean      Clean intermediate build artifacts'
+	@echo "   make format     Format Janet's own source files"
+	@echo '   make grammar    Generate a TextMate language grammar'
+	@echo
 
 .PHONY: clean install repl debug valgrind test \
-	valtest emscripten dist uninstall docs grammar format
+	valtest dist uninstall docs grammar format help

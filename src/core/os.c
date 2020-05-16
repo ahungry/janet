@@ -182,18 +182,9 @@ static Janet os_exit(int32_t argc, Janet *argv) {
     return janet_wrap_nil();
 }
 
-#ifdef JANET_REDUCED_OS
-/* Provide a dud os/getenv so boot.janet and init.janet work, but nothing else */
+#ifndef JANET_REDUCED_OS
 
-static Janet os_getenv(int32_t argc, Janet *argv) {
-    (void) argv;
-    janet_arity(argc, 1, 2);
-    return janet_wrap_nil();
-}
-
-#else
-/* Provide full os functionality */
-
+#ifndef JANET_NO_PROCESSES
 /* Get env for os_execute */
 static char **os_execute_env(int32_t argc, const Janet *argv) {
     char **envp = NULL;
@@ -389,15 +380,26 @@ static Janet os_execute(int32_t argc, Janet *argv) {
     char *const *cargv = (char *const *)child_argv;
 
     /* Use posix_spawn to spawn new process */
+
+    int use_environ = !janet_flag_at(flags, 0);
+
+    if (use_environ) {
+        janet_lock_environ();
+    }
+
     pid_t pid;
     if (janet_flag_at(flags, 1)) {
         status = posix_spawnp(&pid,
                               child_argv[0], NULL, NULL, cargv,
-                              janet_flag_at(flags, 0) ? envp : environ);
+                              use_environ ? environ : envp);
     } else {
         status = posix_spawn(&pid,
                              child_argv[0], NULL, NULL, cargv,
-                             janet_flag_at(flags, 0) ? envp : environ);
+                             use_environ ? environ : envp);
+    }
+
+    if (use_environ) {
+        janet_unlock_environ();
     }
 
     /* Wait for child */
@@ -432,6 +434,8 @@ static Janet os_shell(int32_t argc, Janet *argv) {
            ? janet_wrap_integer(stat)
            : janet_wrap_boolean(stat);
 }
+
+#endif /* JANET_NO_PROCESSES */
 
 static Janet os_environ(int32_t argc, Janet *argv) {
     (void) argv;
@@ -606,7 +610,7 @@ static Janet os_cryptorand(int32_t argc, Janet *argv) {
        In both cases, use this fallback path for now... */
     int rc;
     int randfd;
-    RETRY_EINTR(randfd, open("/dev/urandom", O_RDONLY));
+    RETRY_EINTR(randfd, open("/dev/urandom", O_RDONLY | O_CLOEXEC));
     if (randfd < 0)
         janet_panic(genericerr);
     while (n > 0) {
@@ -753,8 +757,8 @@ static Janet os_mktime(int32_t argc, Janet *argv) {
         t = mktime(&t_info);
     } else {
         /* utc time */
-#ifdef __sun
-        janet_panic("os/mktime UTC not supported on Solaris");
+#ifdef JANET_NO_UTC_MKTIME
+        janet_panic("os/mktime UTC not supported on this platform");
         return janet_wrap_nil();
 #else
         t = timegm(&t_info);
@@ -768,6 +772,12 @@ static Janet os_mktime(int32_t argc, Janet *argv) {
     return janet_wrap_number((double)t);
 }
 
+#ifdef JANET_NO_SYMLINKS
+#define j_symlink link
+#else
+#define j_symlink symlink
+#endif
+
 static Janet os_link(int32_t argc, Janet *argv) {
     janet_arity(argc, 2, 3);
 #ifdef JANET_WINDOWS
@@ -778,7 +788,7 @@ static Janet os_link(int32_t argc, Janet *argv) {
 #else
     const char *oldpath = janet_getcstring(argv, 0);
     const char *newpath = janet_getcstring(argv, 1);
-    int res = ((argc == 3 && janet_truthy(argv[2])) ? symlink : link)(oldpath, newpath);
+    int res = ((argc == 3 && janet_truthy(argv[2])) ? j_symlink : link)(oldpath, newpath);
     if (-1 == res) janet_panicf("%s: %s -> %s", strerror(errno), oldpath, newpath);
     return janet_wrap_nil();
 #endif
@@ -794,11 +804,13 @@ static Janet os_symlink(int32_t argc, Janet *argv) {
 #else
     const char *oldpath = janet_getcstring(argv, 0);
     const char *newpath = janet_getcstring(argv, 1);
-    int res = symlink(oldpath, newpath);
+    int res = j_symlink(oldpath, newpath);
     if (-1 == res) janet_panicf("%s: %s -> %s", strerror(errno), oldpath, newpath);
     return janet_wrap_nil();
 #endif
 }
+
+#undef j_symlink
 
 static Janet os_mkdir(int32_t argc, Janet *argv) {
     janet_fixarity(argc, 1);
@@ -865,6 +877,7 @@ static Janet os_remove(int32_t argc, Janet *argv) {
     return janet_wrap_nil();
 }
 
+#ifndef JANET_NO_SYMLINKS
 static Janet os_readlink(int32_t argc, Janet *argv) {
     janet_fixarity(argc, 1);
 #ifdef JANET_WINDOWS
@@ -881,6 +894,7 @@ static Janet os_readlink(int32_t argc, Janet *argv) {
     return janet_stringv((const uint8_t *)buffer, len);
 #endif
 }
+#endif
 
 #ifdef JANET_WINDOWS
 
@@ -1149,6 +1163,7 @@ static Janet os_chmod(int32_t argc, Janet *argv) {
     return janet_wrap_nil();
 }
 
+#ifndef JANET_NO_UMASK
 static Janet os_umask(int32_t argc, Janet *argv) {
     janet_fixarity(argc, 1);
     int mask = (int) os_getmode(argv, 0);
@@ -1159,6 +1174,7 @@ static Janet os_umask(int32_t argc, Janet *argv) {
 #endif
     return janet_wrap_integer(janet_perm_to_unix(res));
 }
+#endif
 
 static Janet os_dir(int32_t argc, Janet *argv) {
     janet_arity(argc, 1, 2);
@@ -1208,9 +1224,9 @@ static Janet os_rename(int32_t argc, Janet *argv) {
 
 static Janet os_realpath(int32_t argc, Janet *argv) {
     janet_fixarity(argc, 1);
-#ifdef JANET_WINDOWS
+#ifdef JANET_NO_REALPATH
     (void) argv;
-    janet_panic("os/realpath not supported on Windows");
+    janet_panic("os/realpath not supported on this platform");
 #else
     const char *src = janet_getcstring(argv, 0);
     char *dest = realpath(src, NULL);
@@ -1251,12 +1267,8 @@ static const JanetReg os_cfuns[] = {
              "\t:freebsd\n"
              "\t:openbsd\n"
              "\t:netbsd\n"
-             "\t:posix - A POSIX compatible system (default)")
-    },
-    {
-        "os/getenv", os_getenv,
-        JDOC("(os/getenv variable &opt dflt)\n\n"
-             "Get the string value of an environment variable.")
+             "\t:posix - A POSIX compatible system (default)\n\n"
+             "May also return a custom keyword specified at build time.")
     },
     {
         "os/arch", os_arch,
@@ -1277,10 +1289,15 @@ static const JanetReg os_cfuns[] = {
              "Get a copy of the os environment table.")
     },
     {
+        "os/getenv", os_getenv,
+        JDOC("(os/getenv variable &opt dflt)\n\n"
+             "Get the string value of an environment variable.")
+    },
+    {
         "os/dir", os_dir,
         JDOC("(os/dir dir &opt array)\n\n"
              "Iterate over files and subdirectories in a directory. Returns an array of paths parts, "
-             "with only the filename or directory name and no prefix.")
+             "with only the file name or directory name and no prefix.")
     },
     {
         "os/stat", os_stat,
@@ -1299,7 +1316,7 @@ static const JanetReg os_cfuns[] = {
              "\t:blocks - number of blocks in file. 0 on windows\n"
              "\t:blocksize - size of blocks in file. 0 on windows\n"
              "\t:accessed - timestamp when file last accessed\n"
-             "\t:changed - timestamp when file last chnaged (permissions changed)\n"
+             "\t:changed - timestamp when file last changed (permissions changed)\n"
              "\t:modified - timestamp when file last modified (content changed)\n")
     },
     {
@@ -1326,11 +1343,13 @@ static const JanetReg os_cfuns[] = {
         JDOC("(os/cd path)\n\n"
              "Change current directory to path. Returns nil on success, errors on failure.")
     },
+#ifndef JANET_NO_UMASK
     {
         "os/umask", os_umask,
         JDOC("(os/umask mask)\n\n"
              "Set a new umask, returns the old umask.")
     },
+#endif
     {
         "os/mkdir", os_mkdir,
         JDOC("(os/mkdir path)\n\n"
@@ -1356,6 +1375,7 @@ static const JanetReg os_cfuns[] = {
              "Iff symlink is falsey or not provided, "
              "creates a hard link. Does not work on Windows.")
     },
+#ifndef JANET_NO_SYMLINKS
     {
         "os/symlink", os_symlink,
         JDOC("(os/symlink oldpath newpath)\n\n"
@@ -1366,6 +1386,8 @@ static const JanetReg os_cfuns[] = {
         JDOC("(os/readlink path)\n\n"
              "Read the contents of a symbolic link. Does not work on Windows.\n")
     },
+#endif
+#ifndef JANET_NO_PROCESSES
     {
         "os/execute", os_execute,
         JDOC("(os/execute args &opts flags env)\n\n"
@@ -1383,6 +1405,7 @@ static const JanetReg os_cfuns[] = {
         JDOC("(os/shell str)\n\n"
              "Pass a command string str directly to the system shell.")
     },
+#endif
     {
         "os/setenv", os_setenv,
         JDOC("(os/setenv variable value)\n\n"

@@ -389,6 +389,9 @@ void janet_collect(void) {
     if (janet_vm_gc_suspend) return;
     depth = JANET_RECURSION_GUARD;
     orig_rootcount = janet_vm_root_count;
+#ifdef JANET_NET
+    janet_net_markloop();
+#endif
     for (i = 0; i < orig_rootcount; i++)
         janet_mark(janet_vm_roots[i]);
     while (orig_rootcount < janet_vm_root_count) {
@@ -530,7 +533,7 @@ void *janet_srealloc(void *mem, size_t size) {
             if (i == 0) break;
         }
     }
-    janet_exit("invalid janet_srealloc");
+    JANET_EXIT("invalid janet_srealloc");
 }
 
 void janet_sfinalizer(void *mem, JanetScratchFinalizer finalizer) {
@@ -551,5 +554,5 @@ void janet_sfree(void *mem) {
             if (i == 0) break;
         }
     }
-    janet_exit("invalid janet_sfree");
+    JANET_EXIT("invalid janet_sfree");
 }

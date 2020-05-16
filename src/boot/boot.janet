@@ -141,6 +141,11 @@
   [x &opt err]
   (if x x (error (if err err "assert failure"))))
 
+(defn errorf
+  "A combination of error and string/format. Equivalent to (error (string/format fmt ;args))"
+  [fmt & args]
+  (error (string/format fmt ;args)))
+
 (defmacro default
   "Define a default value for an optional argument.
   Expands to (def sym (if (= nil sym) val sym))"
@@ -240,8 +245,8 @@
   [& body]
   (let [f (gensym) r (gensym)]
     ~(let [,f (,fiber/new (fn [] ,;body) :ie)
-          ,r (,resume ,f)]
-      [(,not= :error (,fiber/status ,f)) ,r])))
+           ,r (,resume ,f)]
+       [(,not= :error (,fiber/status ,f)) ,r])))
 
 (defmacro and
   "Evaluates to the last argument if all preceding elements are truthy, otherwise
@@ -369,7 +374,7 @@
   "Similar to with, but if binding is false or nil, evaluates
   the falsey path. Otherwise, evaluates the truthy path. In both cases,
   ctor is bound to binding."
-  [[binding ctor dtor] truthy &opt falsey ]
+  [[binding ctor dtor] truthy &opt falsey]
   ~(if-let [,binding ,ctor]
      ,(apply defer [(or dtor :close) binding] [truthy])
      ,falsey))
@@ -618,9 +623,9 @@
   (case (length functions)
     0 nil
     1 (in functions 0)
-    2 (let [[f g]       functions] (fn [& x] (f (g ;x))))
-    3 (let [[f g h]     functions] (fn [& x] (f (g (h ;x)))))
-    4 (let [[f g h i]   functions] (fn [& x] (f (g (h (i ;x))))))
+    2 (let [[f g] functions] (fn [& x] (f (g ;x))))
+    3 (let [[f g h] functions] (fn [& x] (f (g (h ;x)))))
+    4 (let [[f g h i] functions] (fn [& x] (f (g (h (i ;x))))))
     (let [[f g h i] functions]
       (comp (fn [x] (f (g (h (i x)))))
             ;(tuple/slice functions 4 -1)))))
@@ -843,8 +848,9 @@
         arr)
     3 (do
         (def [n m s] args)
-        (if (neg? s)
-          (seq [i :down [n m (- s)]] i)
+        (cond
+          (zero? s) @[]
+          (neg? s) (seq [i :down [n m (- s)]] i)
           (seq [i :range [n m s]] i)))
     (error "expected 1 to 3 arguments to range")))
 
@@ -1070,7 +1076,7 @@
   [bindings & body]
   (def dyn-forms
     (seq [i :range [0 (length bindings) 2]]
-         ~(setdyn ,(bindings i) ,(bindings (+ i 1)))))
+      ~(setdyn ,(bindings i) ,(bindings (+ i 1)))))
   ~(,resume (,fiber/new (fn [] ,;dyn-forms ,;body) :p)))
 
 (defmacro with-vars
@@ -1084,12 +1090,12 @@
   (def setnew (seq [i :range [0 len 2]] ['set (vars i) (vars (+ i 1))]))
   (def restoreold (seq [i :range [0 len 2]] ['set (vars i) (temp (/ i 2))]))
   (with-syms [ret f s]
-  ~(do
-     ,;saveold
-     (def ,f (,fiber/new (fn [] ,;setnew ,;body) :ti))
-     (def ,ret (,resume ,f))
-     ,;restoreold
-     (if (= (,fiber/status ,f) :dead) ,ret (,propagate ,ret ,f)))))
+    ~(do
+       ,;saveold
+       (def ,f (,fiber/new (fn [] ,;setnew ,;body) :ti))
+       (def ,ret (,resume ,f))
+       ,;restoreold
+       (if (= (,fiber/status ,f) :dead) ,ret (,propagate ,ret ,f)))))
 
 (defn partial
   "Partial function application."
@@ -1407,9 +1413,9 @@
         ~(do (def ,pattern ,expr) ,(onmatch))))
 
     (and (tuple? pattern) (= :parens (tuple/type pattern)))
-    (if (and (= (pattern 0) '@) (symbol? (pattern 1)))
+    (if (= (get pattern 0) '@)
       # Unification with external values
-      ~(if (= ,(pattern 1) ,expr) ,(onmatch) ,sentinel)
+      ~(if (= ,(get pattern 1) ,expr) ,(onmatch) ,sentinel)
       (match-1
         (in pattern 0) expr
         (fn []
@@ -1443,7 +1449,7 @@
                (if (= key nil)
                  (onmatch)
                  ~(do (def ,$val (,get ,$dict ,key))
-                   ,(match-1 [(in pattern key) [not= nil $val]] $val aux seen)))))
+                    ,(match-1 [(in pattern key) [not= nil $val]] $val aux seen)))))
            ,sentinel)))
 
     :else ~(if (= ,pattern ,expr) ,(onmatch) ,sentinel)))
@@ -1557,7 +1563,7 @@
   (print))
 
 (defn doc*
-  "Get the documentation for a symbol in a given environment."
+  "Get the documentation for a symbol in a given environment. Function form of doc."
   [&opt sym]
 
   (cond
@@ -1591,7 +1597,10 @@
     (print-index identity)))
 
 (defmacro doc
-  "Shows documentation for the given symbol."
+  "Shows documentation for the given symbol, or can show a list of available bindings.
+  If sym is a symbol, will look for documentation for that symbol. If sym is a string
+  or is not provided, will show all lexical and dynamic bindings in the current environment with
+  that prefix (all bindings will be shown if no prefix is given)."
   [&opt sym]
   ~(,doc* ',sym))
 
@@ -1748,8 +1757,8 @@
     :array (tuple/slice (map freeze x))
     :tuple (tuple/slice (map freeze x))
     :table (if-let [p (table/getproto x)]
-              (freeze (merge (table/clone p) x))
-              (struct ;(map freeze (kvs x))))
+             (freeze (merge (table/clone p) x))
+             (struct ;(map freeze (kvs x))))
     :struct (struct ;(map freeze (kvs x)))
     :buffer (string x)
     x))
@@ -1948,6 +1957,7 @@
   (default on-parse-error bad-parse)
   (default evaluator (fn evaluate [x &] (x)))
   (default where "<anonymous>")
+  (default guard :ydt)
 
   # Are we done yet?
   (var going true)
@@ -1974,11 +1984,18 @@
                   (string err " on line " line ", column " column)
                   err))
               (on-compile-error msg errf where))))
-        (or guard :a)))
+        guard))
     (fiber/setenv f env)
     (while (fiber/can-resume? f)
       (def res (resume f resumeval))
       (when good (when going (set resumeval (onstatus f res))))))
+
+  (defn parse-err
+    "Handle parser error in the correct environment"
+    [p where]
+    (def f (coro (on-parse-error p where)))
+    (fiber/setenv f env)
+    (resume f))
 
   # Loop
   (def buf @"")
@@ -1997,12 +2014,12 @@
       (while (parser/has-more p)
         (eval1 (parser/produce p)))
       (when (= (parser/status p) :error)
-        (on-parse-error p where))))
+        (parse-err p where))))
   # Check final parser state
   (while (parser/has-more p)
     (eval1 (parser/produce p)))
   (when (= (parser/status p) :error)
-    (on-parse-error p where))
+    (parse-err p where))
 
   (in env :exit-value env))
 
@@ -2048,6 +2065,19 @@
   (if (= (type res) :function)
     (res)
     (error (res :error))))
+
+(defn parse
+  "Parse a string and return the first value. For complex parsing, such as for a repl with error handling,
+  use the parser api."
+  [str]
+  (let [p (parser/new)]
+    (parser/consume p str)
+    (parser/eof p)
+    (if (parser/has-more p)
+      (parser/produce p)
+      (if (= :error (parser/status p))
+        (error (parser/error p))
+        (error "no value")))))
 
 (def make-image-dict
   "A table used in combination with marshal to marshal code (images), such that
@@ -2102,11 +2132,12 @@
   (defn- find-prefix
     [pre]
     (or (find-index |(and (string? ($ 0)) (string/has-prefix? pre ($ 0))) module/paths) 0))
-  (array/insert module/paths 0 [(string ":cur:/:all:" ext) loader check-.])
   (def all-index (find-prefix ":all:"))
   (array/insert module/paths all-index [(string ":all:" ext) loader not-check-.])
   (def sys-index (find-prefix ":sys:"))
   (array/insert module/paths sys-index [(string ":sys:/:all:" ext) loader not-check-.])
+  (def curall-index (find-prefix ":cur:/:all:"))
+  (array/insert module/paths curall-index [(string ":cur:/:all:" ext) loader check-.])
   module/paths)
 
 (module/add-paths ":native:" :native)
@@ -2124,7 +2155,7 @@
       (when f
         (def res
           (try (do (file/read f 1) true)
-               ([err] nil)))
+            ([err] nil)))
         (file/close f)
         res))))
 
@@ -2146,8 +2177,8 @@
     (when (mod-filter checker path)
       (if (function? p)
         (when-let [res (p path)]
-                  (set ret [res mod-kind])
-                  (break))
+          (set ret [res mod-kind])
+          (break))
         (do
           (def fullpath (string (module/expand-path path p)))
           (when (fexists fullpath)
@@ -2233,14 +2264,11 @@
               newenv)
     :image (fn [path &] (load-image (slurp path)))})
 
-(defn require
-  "Require a module with the given name. Will search all of the paths in
-  module/paths. Returns the new environment
-  returned from compiling and running the file."
-  [path & args]
+(defn require-1
+  [path args kargs]
   (def [fullpath mod-kind] (module/find path))
   (unless fullpath (error mod-kind))
-  (if-let [check (in module/cache fullpath)]
+  (if-let [check (if-not (kargs :fresh) (in module/cache fullpath))]
     check
     (if (module/loading fullpath)
       (error (string "circular dependency " fullpath " detected"))
@@ -2251,15 +2279,23 @@
         (put module/cache fullpath env)
         env))))
 
+(defn require
+  "Require a module with the given name. Will search all of the paths in
+  module/paths. Returns the new environment
+  returned from compiling and running the file."
+  [path & args]
+  (require-1 path args (struct ;args)))
+
 (defn import*
   "Function form of import. Same parameters, but the path
   and other symbol parameters should be strings instead."
   [path & args]
   (def env (fiber/getenv (fiber/current)))
+  (def kargs (table ;args))
   (def {:as as
         :prefix prefix
-        :export ep} (table ;args))
-  (def newenv (require path ;args))
+        :export ep} kargs)
+  (def newenv (require-1 path args kargs))
   (def prefix (or
                 (and as (string as "/"))
                 prefix
@@ -2268,6 +2304,8 @@
     (def newv (table/setproto @{:private (not ep)} v))
     (put env (symbol prefix k) newv)))
 
+(put _env 'require-1 nil)
+
 (defmacro import
   "Import a module. First requires the module, and then merges its
   symbols into the current environment, prepending a given prefix as needed.
@@ -2275,7 +2313,8 @@
   use the name of the module as a prefix. One can also use :export true
   to re-export the imported symbols. If :exit true is given as an argument,
   any errors encountered at the top level in the module will cause (os/exit 1)
-  to be called. Dynamic bindings will NOT be imported."
+  to be called. Dynamic bindings will NOT be imported. Use :fresh to bypass the
+  module cache."
   [path & args]
   (def argm (map |(if (keyword? $) $ (string $)) args))
   (tuple import* (string path) ;argm))
@@ -2330,12 +2369,15 @@
   [&opt nth frame-idx]
   (in (.slots frame-idx) (or nth 0)))
 
+# Conditional compilation for disasm
+(def disasm-alias (if-let [x (_env 'disasm)] (x :value)))
+
 (defn .disasm
   "Gets the assembly for the current function."
   [&opt n]
   (def frame (.frame n))
   (def func (frame :function))
-  (disasm func))
+  (disasm-alias func))
 
 (defn .bytecode
   "Get the bytecode for the current function."
@@ -2347,10 +2389,10 @@
   [&opt n]
   (def frame (.frame n))
   (def func (frame :function))
-  (def dasm (disasm func))
-  (def bytecode (dasm 'bytecode))
+  (def dasm (disasm-alias func))
+  (def bytecode (in dasm 'bytecode))
   (def pc (frame :pc))
-  (def sourcemap (dasm 'sourcemap))
+  (def sourcemap (in dasm 'sourcemap))
   (var last-loc [-2 -2])
   (print "\n  signal: " (.signal))
   (print "  function:   " (dasm 'name) " [" (in dasm 'source "") "]")
@@ -2372,14 +2414,6 @@
     (print))
   (print))
 
-(defn .source
-  "Show the source code for the function being debugged."
-  [&opt n]
-  (def frame (.frame n))
-  (def s (frame :source))
-  (def all-source (slurp s))
-  (print "\n" all-source "\n"))
-
 (defn .breakall
   "Set breakpoints on all instructions in the current function."
   [&opt n]
@@ -2397,6 +2431,22 @@
   (for i 0 (length bytecode)
     (debug/unfbreak fun i))
   (print "Cleared " (length bytecode) " breakpoints in " fun))
+
+(unless (get _env 'disasm)
+  (put _env '.disasm nil)
+  (put _env '.bytecode nil)
+  (put _env '.breakall nil)
+  (put _env '.clearall nil)
+  (put _env '.ppasm nil))
+(put _env 'disasm-alias nil)
+
+(defn .source
+  "Show the source code for the function being debugged."
+  [&opt n]
+  (def frame (.frame n))
+  (def s (frame :source))
+  (def all-source (slurp s))
+  (print "\n" all-source "\n"))
 
 (defn .break
   "Set breakpoint at the current pc."
@@ -2438,8 +2488,11 @@
     (set res (debug/step (.fiber))))
   res)
 
+(def debugger-env
+  "An environment that contains dot prefixed functions for debugging."
+  @{})
+
 (def- debugger-keys (filter (partial string/has-prefix? ".") (keys _env)))
-(def- debugger-env @{})
 (each k debugger-keys (put debugger-env k (_env k)) (put _env k nil))
 (put _env 'debugger-keys nil)
 
@@ -2492,7 +2545,10 @@
 
     (fn [f x]
       (if (= :dead (fiber/status f))
-        (do (pp x) (put e '_ @{:value x}))
+        (do
+          (put e '_ @{:value x})
+          (printf (get e :pretty-format "%q") x)
+          (flush))
         (if (e :debug)
           (enter-debugger f x)
           (do (debug/stacktrace f x) (eflush))))))
@@ -2501,8 +2557,6 @@
                 :chunks chunks
                 :on-status (or onsignal (make-onsignal env 1))
                 :source "repl"}))
-
-(put _env 'debugger-env nil)
 
 ###
 ###
@@ -2533,6 +2587,9 @@
 
 (def- importers {'import true 'import* true 'use true 'dofile true 'require true})
 
+# conditional compilation for reduced os
+(def- getenv-alias (if-let [entry (in _env 'os/getenv)] (entry :value) (fn [&])))
+
 (defn cli-main
   "Entrance for the Janet CLI tool. Call this functions with the command line
   arguments as an array or tuple of strings to invoke the CLI interface."
@@ -2550,8 +2607,8 @@
   (var *debug* false)
   (var *compile-only* false)
 
-  (if-let [jp (os/getenv "JANET_PATH")] (setdyn :syspath jp))
-  (if-let [jp (os/getenv "JANET_HEADERPATH")] (setdyn :headerpath jp))
+  (if-let [jp (getenv-alias "JANET_PATH")] (setdyn :syspath jp))
+  (if-let [jp (getenv-alias "JANET_HEADERPATH")] (setdyn :headerpath jp))
 
   # Flag handlers
   (def handlers
@@ -2566,7 +2623,7 @@
   -d : Set the debug flag in the repl
   -r : Enter the repl after running all scripts
   -p : Keep on executing if there is a top level error (persistent)
-  -q : Hide prompt, logo, and repl output (quiet)
+  -q : Hide logo (quiet)
   -k : Compile scripts but do not execute (flycheck)
   -m syspath : Set system path for loading global modules
   -c source output : Compile janet source code into an image
@@ -2658,16 +2715,15 @@
     (def getter (if *raw-stdin* getstdin getline))
     (defn getchunk [buf p]
       (getter (getprompt p) buf env))
-    (def onsig (if *quiet* (fn [x &] x) nil))
     (setdyn :pretty-format (if *colorize* "%.20Q" "%.20q"))
     (setdyn :err-color (if *colorize* true))
-    (repl getchunk onsig env)))
+    (repl getchunk nil env)))
 
 (put _env 'no-side-effects nil)
 (put _env 'is-safe-def nil)
 (put _env 'safe-forms nil)
 (put _env 'importers nil)
-
+(put _env 'getenv-alias nil)
 
 ###
 ###
@@ -2754,6 +2810,7 @@
      "src/core/io.c"
      "src/core/marsh.c"
      "src/core/math.c"
+     "src/core/net.c"
      "src/core/os.c"
      "src/core/parse.c"
      "src/core/peg.c"

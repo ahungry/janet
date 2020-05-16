@@ -1,6 +1,7 @@
 # This file is invoked by build_win.bat
 # Relevant configuration variables are set there.
 
+SetCompressor /FINAL /SOLID lzma
 Unicode True
 
 !echo "Program Files: ${PROGRAMFILES}"
@@ -110,7 +111,7 @@ section "Janet" BfWSection
     # Bin files
     file /oname=bin\janet.exe dist\janet.exe
     file /oname=logo.ico assets\icon.ico
-    file /oname=bin\jpm.janet auxbin\jpm
+    file /oname=bin\jpm.janet .\jpm
     file /oname=bin\jpm.bat tools\jpm.bat
 
     # C headers and library files

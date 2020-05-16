@@ -43,6 +43,7 @@ extern JANET_THREAD_LOCAL int janet_vm_stackn;
 /* The current running fiber on the current thread.
  * Set and unset by janet_run. */
 extern JANET_THREAD_LOCAL JanetFiber *janet_vm_fiber;
+extern JANET_THREAD_LOCAL JanetFiber *janet_vm_root_fiber;
 
 /* The current pointer to the inner most jmp_buf. The current
  * return point for panics. */
@@ -78,6 +79,17 @@ extern JANET_THREAD_LOCAL size_t janet_vm_root_capacity;
 extern JANET_THREAD_LOCAL JanetScratch **janet_scratch_mem;
 extern JANET_THREAD_LOCAL size_t janet_scratch_cap;
 extern JANET_THREAD_LOCAL size_t janet_scratch_len;
+
+/* Recursionless traversal of data structures */
+typedef struct {
+    JanetGCObject *self;
+    JanetGCObject *other;
+    int32_t index;
+    int32_t index2;
+} JanetTraversalNode;
+extern JANET_THREAD_LOCAL JanetTraversalNode *janet_vm_traversal;
+extern JANET_THREAD_LOCAL JanetTraversalNode *janet_vm_traversal_top;
+extern JANET_THREAD_LOCAL JanetTraversalNode *janet_vm_traversal_base;
 
 /* Setup / teardown */
 #ifdef JANET_THREADS
